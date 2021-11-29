@@ -1,9 +1,15 @@
 package main
 
 const (
-	greetAdmin  string = `Приветствую!`
-	notAdmin    string = `Вы не являетесь администратором этого бота.`
-	kickMessage string = `Пользователь %s покидает чат: %s`
+	greetAdmin     string = `Приветствую!`
+	notAdmin       string = `Вы не являетесь администратором этого бота.`
+	kickMessage    string = `Пользователь %s покидает чат: %s`
+	welcomeMessage string = `Добро пожаловать, <a href="tg://user?id=%d">%s</a>!
+Этот чат посвящён компьютерной игре NetHack.
+Полезные ссылки есть в информации о группе.
+Войдя в чат, вы ОБЯЗАНЫ поздороваться с участниками.
+На это у вас есть 23 часа.
+В противном случае вы будете забанены.`
 )
 
 var deathCauses []string = []string{

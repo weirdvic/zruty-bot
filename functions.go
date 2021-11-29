@@ -98,7 +98,7 @@ func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 		_, err := b.Client.SendMessage(
 			m.Chat.ID,
 			fmt.Sprintf(
-				b.WelcomeMessage,
+				welcomeMessage,
 				u.ID,
 				u.FirstName,
 			),
@@ -135,24 +135,31 @@ func (b *zrutyBot) checkUsers() {
 				)
 				b.delUser(id)
 			} else if !u.CheckPassed {
-				if int(time.Since(u.FirstSeen).Hours()) > b.BanAfter {
+				if int(time.Since(u.FirstSeen).Seconds()) > b.BanAfter {
 					log.Printf(
 						"Кикаем пользователя @%s",
 						u.Username)
-					_, err := b.Client.SendMessage(
-						gid,
-						fmt.Sprintf(
-							kickMessage,
-							u.FirstName,
-							deathCauses[rand.Intn(len(deathCauses))],
-						),
-					)
-					if err != nil {
-						log.Print(err)
-					}
 					err = b.Client.KickChatMember(gid, uid)
 					if err != nil {
 						log.Print(err)
+						b.notifyAdmins(
+							fmt.Sprintf(
+								"не удалось удалить пользователя: %v",
+								err,
+							),
+						)
+					} else {
+						_, err := b.Client.SendMessage(
+							gid,
+							fmt.Sprintf(
+								kickMessage,
+								u.FirstName,
+								deathCauses[rand.Intn(len(deathCauses))],
+							),
+						)
+						if err != nil {
+							log.Print(err)
+						}
 					}
 					b.delUser(id)
 					return
@@ -189,16 +196,23 @@ func (b *zrutyBot) restoreBackup() {
 	}
 }
 
-func (b *zrutyBot) shutdown() {
-	b.makeBackup()
+func (b *zrutyBot) notifyAdmins(description string) {
 	for id := range b.Admins {
 		_, err := b.Client.SendMessage(
 			id,
-			"Бот остановлен…",
+			fmt.Sprintf(
+				"Системное уведомление: %s",
+				description,
+			),
 		)
 		if err != nil {
 			log.Print(err)
 		}
 	}
+}
+
+func (b *zrutyBot) shutdown() {
+	b.makeBackup()
+	b.notifyAdmins("бот остановлен…")
 	os.Exit(0)
 }

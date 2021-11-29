@@ -34,8 +34,6 @@ type zrutyBot struct {
 	Admins map[string]*User `json:"admins"`
 	// Список отслеживаемых пользователей
 	Users map[string]*User `json:"users"`
-	// Приветственное сообщение
-	WelcomeMessage string `json:"welcome_message"`
 }
 
 var (
@@ -70,12 +68,7 @@ func main() {
 	log.Print("Бот создан…")
 	zruty.Client = *bot.Client()
 
-	if _, err := os.Stat("config.json"); err == nil {
-		log.Print("config.json обнаружен…")
-		zruty.restoreBackup()
-	}
-
-	bot.HandleMessage(`.*start.*`, startHandler)
+	bot.HandleMessage(`^/start.*`, startHandler)
 	bot.HandleMessage(`^/report.*`, reportHandler)
 	bot.HandleMessage(`^/backup.*`, backupHandler)
 	bot.HandleMessage(``, defaultHandler)
