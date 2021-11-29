@@ -1,4 +1,4 @@
-module github.com/weirdvic/welcome-bot
+module github.com/weirdvic/zruty-bot
 
 go 1.17
 

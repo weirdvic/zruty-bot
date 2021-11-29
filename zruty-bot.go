@@ -52,6 +52,7 @@ func init() {
 	if WB.Users == nil {
 		WB.Users = make(map[string]*User)
 	}
+	// Инициализация ГПСЧ
 	rand.Seed(time.Now().UnixNano())
 }
 
