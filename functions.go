@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
+	"os"
 	"strconv"
 	"time"
 
@@ -56,7 +59,7 @@ func (b *botConfig) addUsers(m *tbot.Message) {
 	)
 	for _, u := range users {
 		uid := strconv.Itoa(u.ID)
-		if !WB.isUser(uid) {
+		if !zruty.isUser(uid) {
 			b.Users[uid] = &User{
 				ID:          uid,
 				FirstName:   u.FirstName,
@@ -96,10 +99,9 @@ func (b *botConfig) welcomeUsers(m *tbot.Message) {
 		_, err := b.Client.SendMessage(
 			m.Chat.ID,
 			fmt.Sprintf(
-				welcomeUsers,
+				b.WelcomeMessage,
 				u.FirstName,
 			),
-			tbot.OptParseModeMarkdown,
 		)
 		if err != nil {
 			log.Print(err)
@@ -143,12 +145,14 @@ func (b *botConfig) checkUsers() {
 							u.FirstName,
 							deathCauses[rand.Intn(len(deathCauses))],
 						),
-						tbot.OptParseModeMarkdown,
 					)
 					if err != nil {
 						log.Print(err)
 					}
-					b.Client.KickChatMember(gid, uid)
+					err = b.Client.KickChatMember(gid, uid)
+					if err != nil {
+						log.Print(err)
+					}
 					b.delUser(id)
 					return
 				}
@@ -158,4 +162,42 @@ func (b *botConfig) checkUsers() {
 			}
 		}
 	}
+}
+
+func (b *botConfig) makeBackup() {
+	backup, err := json.MarshalIndent(b, "", " ")
+	if err != nil {
+		log.Print(err)
+	}
+	err = ioutil.WriteFile("config.json", backup, 0644)
+	if err != nil {
+		log.Print(err)
+	}
+	log.Print("Настройки сохранены.")
+}
+
+func (b *botConfig) restoreBackup() {
+	backup, err := ioutil.ReadFile("config.json")
+	if err != nil {
+		log.Print(err)
+	}
+	log.Print("Чтение файла настроек успешно")
+	err = json.Unmarshal(backup, b)
+	if err != nil {
+		log.Print(err)
+	}
+}
+
+func (b *botConfig) shutdown() {
+	b.makeBackup()
+	for id := range b.Admins {
+		_, err := b.Client.SendMessage(
+			id,
+			"Бот остановлен…",
+		)
+		if err != nil {
+			log.Print(err)
+		}
+	}
+	os.Exit(0)
 }
