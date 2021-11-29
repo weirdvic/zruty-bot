@@ -23,7 +23,7 @@ type User struct {
 	CheckPassed bool              `json:"check_passed"`
 }
 
-type botConfig struct {
+type zrutyBot struct {
 	// Токен Telegram бота
 	Token string `json:"token"`
 	// Объект Client бота для удобства
@@ -39,7 +39,7 @@ type botConfig struct {
 }
 
 var (
-	zruty botConfig
+	zruty zrutyBot
 )
 
 func init() {
@@ -59,7 +59,7 @@ func init() {
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func(b *botConfig) {
+	go func(b *zrutyBot) {
 		<-c
 		b.shutdown()
 	}(&zruty)
@@ -71,7 +71,7 @@ func main() {
 	zruty.Client = *bot.Client()
 
 	if _, err := os.Stat("config.json"); err == nil {
-		log.Print("Найден дамп пользователей!")
+		log.Print("config.json обнаружен…")
 		zruty.restoreBackup()
 	}
 
@@ -89,7 +89,7 @@ func main() {
 	log.Print("Бот запущен…")
 
 	// Функция для запуска проверки пользователей с определённым интервалом
-	func(b *botConfig) {
+	func(b *zrutyBot) {
 		for {
 			time.Sleep(1 * time.Minute)
 			b.checkUsers()

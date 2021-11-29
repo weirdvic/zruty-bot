@@ -14,7 +14,7 @@ import (
 )
 
 // isAdmin проверяет является ли пользователь одним из админов бота
-func (b *botConfig) isAdmin(id string) bool {
+func (b *zrutyBot) isAdmin(id string) bool {
 	if _, ok := b.Admins[id]; ok {
 		return true
 	}
@@ -22,7 +22,7 @@ func (b *botConfig) isAdmin(id string) bool {
 }
 
 // isUser проверяет есть ли пользователь среди отслеживаемых
-func (b *botConfig) isUser(id string) bool {
+func (b *zrutyBot) isUser(id string) bool {
 	if _, ok := b.Users[id]; ok {
 		return true
 	}
@@ -30,7 +30,7 @@ func (b *botConfig) isUser(id string) bool {
 }
 
 // isInGroup позволяет проверить состоит ли пользователь в группе
-func (b *botConfig) isInGroup(groupID string, userID int) bool {
+func (b *zrutyBot) isInGroup(groupID string, userID int) bool {
 	gcm, err := b.Client.GetChatMember(groupID, userID)
 	if err != nil {
 		log.Print(err)
@@ -52,7 +52,7 @@ func (b *botConfig) isInGroup(groupID string, userID int) bool {
 }
 
 // addUsers регистрирует новых пользователей
-func (b *botConfig) addUsers(m *tbot.Message) {
+func (b *zrutyBot) addUsers(m *tbot.Message) {
 	var (
 		users          = m.NewChatMembers
 		usersAdded int = 0
@@ -92,7 +92,7 @@ func (b *botConfig) addUsers(m *tbot.Message) {
 }
 
 // welcomeUsers отправляет новым пользователям приветственное сообщение
-func (b *botConfig) welcomeUsers(m *tbot.Message) {
+func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 	log.Printf("Chat ID is: %v", m.Chat.ID)
 	var users = m.NewChatMembers
 	for _, u := range users {
@@ -110,13 +110,13 @@ func (b *botConfig) welcomeUsers(m *tbot.Message) {
 }
 
 // delUser удаляет пользователя из списка отслеживаемых
-func (b *botConfig) delUser(id string) {
+func (b *zrutyBot) delUser(id string) {
 	delete(b.Users, id)
 	log.Print("Пользователь больше не отслеживается…")
 }
 
 // checkUsers проверяет зарегистрированных пользователей и банит лишних
-func (b *botConfig) checkUsers() {
+func (b *zrutyBot) checkUsers() {
 	// Проходим циклом по всем зарегистрированным пользователям
 	for id, u := range b.Users {
 		// Для каждого пользователя обходим его группы и проверяем,
@@ -164,7 +164,7 @@ func (b *botConfig) checkUsers() {
 	}
 }
 
-func (b *botConfig) makeBackup() {
+func (b *zrutyBot) makeBackup() {
 	backup, err := json.MarshalIndent(b, "", " ")
 	if err != nil {
 		log.Print(err)
@@ -176,7 +176,7 @@ func (b *botConfig) makeBackup() {
 	log.Print("Настройки сохранены.")
 }
 
-func (b *botConfig) restoreBackup() {
+func (b *zrutyBot) restoreBackup() {
 	backup, err := ioutil.ReadFile("config.json")
 	if err != nil {
 		log.Print(err)
@@ -188,7 +188,7 @@ func (b *botConfig) restoreBackup() {
 	}
 }
 
-func (b *botConfig) shutdown() {
+func (b *zrutyBot) shutdown() {
 	b.makeBackup()
 	for id := range b.Admins {
 		_, err := b.Client.SendMessage(
