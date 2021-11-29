@@ -93,15 +93,16 @@ func (b *zrutyBot) addUsers(m *tbot.Message) {
 
 // welcomeUsers отправляет новым пользователям приветственное сообщение
 func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
-	log.Printf("Chat ID is: %v", m.Chat.ID)
 	var users = m.NewChatMembers
 	for _, u := range users {
 		_, err := b.Client.SendMessage(
 			m.Chat.ID,
 			fmt.Sprintf(
 				b.WelcomeMessage,
+				u.ID,
 				u.FirstName,
 			),
+			tbot.OptParseModeHTML,
 		)
 		if err != nil {
 			log.Print(err)
