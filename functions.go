@@ -98,7 +98,6 @@ func (b *botConfig) welcomeUsers(m *tbot.Message) {
 			fmt.Sprintf(
 				welcomeUsers,
 				u.FirstName,
-				b.BanAfter,
 			),
 			tbot.OptParseModeMarkdown,
 		)
@@ -133,7 +132,7 @@ func (b *botConfig) checkUsers() {
 				)
 				b.delUser(id)
 			} else if !u.CheckPassed {
-				if int(time.Since(u.FirstSeen).Seconds()) > b.BanAfter {
+				if int(time.Since(u.FirstSeen).Hours()) > b.BanAfter {
 					log.Printf(
 						"Кикаем пользователя @%s",
 						u.Username)
