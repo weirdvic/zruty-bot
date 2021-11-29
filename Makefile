@@ -4,7 +4,7 @@ all: build restart
 
 .PHONY: build
 build:
-	docker build --tag ${BOT_NAME}:latest .
+	docker build --no-cache --tag ${BOT_NAME}:latest .
 
 .PHONY: restart
 restart:
