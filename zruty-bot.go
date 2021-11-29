@@ -30,6 +30,8 @@ type zrutyBot struct {
 	Client tbot.Client
 	// Количество часов, после которых аккаунт нужно банить
 	BanAfter int `json:"ban_after"`
+	// Список обрабатываемых групп
+	Groups []string `json:"groups"`
 	// Список администраторов бота
 	Admins map[string]*User `json:"admins"`
 	// Список отслеживаемых пользователей
@@ -80,6 +82,7 @@ func main() {
 		}
 	}(bot)
 	log.Print("Бот запущен…")
+	zruty.notifyAdmins("бот начал работу…")
 
 	// Функция для запуска проверки пользователей с определённым интервалом
 	func(b *zrutyBot) {

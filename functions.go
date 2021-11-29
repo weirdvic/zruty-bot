@@ -29,6 +29,16 @@ func (b *zrutyBot) isUser(id string) bool {
 	return false
 }
 
+// isValidGroup проверяет относится ли группа к отслеживаемым
+func (b *zrutyBot) isValidGroup(id string) bool {
+	for _, i := range b.Groups {
+		if i == id {
+			return true
+		}
+	}
+	return false
+}
+
 // isInGroup позволяет проверить состоит ли пользователь в группе
 func (b *zrutyBot) isInGroup(groupID string, userID int) bool {
 	gcm, err := b.Client.GetChatMember(groupID, userID)
@@ -135,7 +145,7 @@ func (b *zrutyBot) checkUsers() {
 				)
 				b.delUser(id)
 			} else if !u.CheckPassed {
-				if int(time.Since(u.FirstSeen).Seconds()) > b.BanAfter {
+				if int(time.Since(u.FirstSeen).Hours()) > b.BanAfter {
 					log.Printf(
 						"Кикаем пользователя @%s",
 						u.Username)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/yanzay/tbot/v2"
@@ -32,14 +33,19 @@ func reportHandler(m *tbot.Message) {
 		if len(zruty.Users) != 0 {
 			report += "```\nЕсть отслеживаемые пользователи:\n\n"
 			for _, u := range zruty.Users {
+				var userChats []string
 				usersCount++
+				for _, title := range u.Groups {
+					userChats = append(userChats, title)
+				}
 				report += fmt.Sprintf(
-					"%d.\t%s %s @%s %s назад\n",
+					"%d.\t%s %s @%s %s назад\nВ чатах: %s\n",
 					usersCount,
 					u.FirstName,
 					u.LastName,
 					u.Username,
 					time.Since(u.FirstSeen),
+					strings.Join(userChats, ", "),
 				)
 			}
 			report += fmt.Sprintf("\nВсего пользователей %d\n```", usersCount)
@@ -71,13 +77,20 @@ func backupHandler(m *tbot.Message) {
 }
 
 func defaultHandler(m *tbot.Message) {
-	if m.Chat.Type == "supergroup" || m.Chat.Type == "group" {
+	if zruty.isValidGroup(m.Chat.ID) &&
+		(m.Chat.Type == "supergroup" || m.Chat.Type == "group") {
 		if len(m.NewChatMembers) > 0 {
 			zruty.addUsers(m)
 			zruty.welcomeUsers(m)
 			return
 		} else if u := strconv.Itoa(m.From.ID); zruty.isUser(u) {
 			zruty.Users[u].CheckPassed = true
+			zruty.notifyAdmins(
+				fmt.Sprintf(
+					"пользователь @%s прошёл проверку",
+					zruty.Users[u].Username,
+				),
+			)
 			log.Printf("Пользователь %s %s(@%s) написал сообщение в чат!",
 				zruty.Users[u].FirstName,
 				zruty.Users[u].LastName,
