@@ -91,6 +91,7 @@ func defaultHandler(m *tbot.Message) {
 					zruty.Users[u].Username,
 				),
 			)
+			zruty.delUser(u)
 			log.Printf("Пользователь %s %s(@%s) написал сообщение в чат!",
 				zruty.Users[u].FirstName,
 				zruty.Users[u].LastName,
