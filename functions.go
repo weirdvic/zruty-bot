@@ -154,7 +154,7 @@ func (b *zrutyBot) checkUsers() {
 						log.Print(err)
 						b.notifyAdmins(
 							fmt.Sprintf(
-								`не удалось удалить пользователя <a href="tg://user?id=%d">%s</a>h из группы %s : %v`,
+								`не удалось удалить пользователя <a href="tg://user?id=%d">%s</a> из группы %s : %v`,
 								uid,
 								u.FirstName,
 								gTitle,
@@ -162,6 +162,14 @@ func (b *zrutyBot) checkUsers() {
 							),
 						)
 					} else {
+						b.notifyAdmins(
+							fmt.Sprintf(
+								`пользователь <a href="tg://user?id=%d">%s</a> был удалён из группы %s`,
+								uid,
+								u.FirstName,
+								gTitle,
+							),
+						)
 						_, err := b.Client.SendMessage(
 							gid,
 							fmt.Sprintf(
