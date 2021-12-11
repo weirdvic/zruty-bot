@@ -154,7 +154,10 @@ func (b *zrutyBot) checkUsers() {
 						log.Print(err)
 						b.notifyAdmins(
 							fmt.Sprintf(
-								"не удалось удалить пользователя: %v",
+								`не удалось удалить пользователя <a href="tg://user?id=%d">%s</a>h из группы %s : %v`,
+								uid,
+								u.FirstName,
+								gTitle,
 								err,
 							),
 						)
@@ -206,14 +209,15 @@ func (b *zrutyBot) restoreBackup() {
 	}
 }
 
-func (b *zrutyBot) notifyAdmins(description string) {
+func (b *zrutyBot) notifyAdmins(message string) {
 	for id := range b.Admins {
 		_, err := b.Client.SendMessage(
 			id,
 			fmt.Sprintf(
 				"Системное уведомление: %s",
-				description,
+				message,
 			),
+			tbot.OptParseModeHTML,
 		)
 		if err != nil {
 			log.Print(err)
