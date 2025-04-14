@@ -41,7 +41,7 @@ func reportHandler(m *tbot.Message) {
 			c.title
 		FROM users u
 		LEFT JOIN user_chats uc ON u.id = uc.user_id
-		LEFT JOIN chats c ON uc.chat_id = c.id
+		LEFT JOIN chats c ON uc.chat_id = c.chat_id
 		WHERE u.check_passed_at = NULL
 		ORDER BY u.first_seen_at ASC
 	`)
