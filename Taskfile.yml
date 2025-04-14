@@ -1,0 +1,47 @@
+---
+version: '3'
+
+env:
+  DB_DSN: "{{.DB_DSN | default `sqlite3://zruty.sqlite3`}}"
+  BOT_NAME: "zruty-bot"
+
+tasks:
+  default:
+    cmds:
+      - task: run
+
+  run:
+    cmds:
+      - go run .
+    silent: true
+
+  build_container:
+    desc: "Build the bot container"
+    vars:
+      RUNTIME: "{{.RUNTIME | default `podman`}}"
+    cmds:
+      - "{{.RUNTIME}} build --tag {{.BOT_NAME}}:latest ."
+
+  restart_container:
+    desc: "Restart the bot container"
+    vars:
+      RUNTIME: "{{.RUNTIME | default `podman`}}"
+    cmds:
+      - "{{.RUNTIME}} stop {{.BOT_NAME}} || true"
+      - "{{.RUNTIME}} rm {{.BOT_NAME}} || true"
+      - "{{.RUNTIME}} run --name={{.BOT_NAME}} --restart=always --detach {{.BOT_NAME}}"
+
+  new-migration:
+    cmds:
+    - migrate create -ext sql -dir migrations/ -seq -digits 6 {{.CLI_ARGS}}
+    silent: true
+  
+  migrate-up:
+    cmds:
+    - migrate -database ${DB_DSN} -path migrations/ up
+    silent: true
+  
+  migrate-down:
+    cmds:
+    - migrate -database ${DB_DSN} -path migrations/ down
+    silent: true

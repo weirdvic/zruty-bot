@@ -1,78 +1,73 @@
 package main
 
 import (
+	"database/sql"
 	_ "embed"
 	"log"
-	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/yanzay/tbot/v2"
 )
 
-type User struct {
-	ID          string            `json:"id"`
-	FirstName   string            `json:"first_name"`
-	LastName    string            `json:"last_name"`
-	Username    string            `json:"username"`
-	Groups      map[string]string `json:"groups"`
-	IsBot       bool              `json:"is_bot"`
-	FirstSeen   time.Time         `json:"first_seen"`
-	CheckPassed bool              `json:"check_passed"`
+type user struct {
+	userID        int
+	firstName     string
+	lastName      string
+	username      string
+	groupID       string
+	groupTitle    string
+	isBot         bool
+	firstSeenAt   time.Time
+	checkPassedAt time.Time
 }
 
 type zrutyBot struct {
 	// Токен Telegram бота
-	Token string `json:"token"`
+	token string
 	// Объект Client бота для удобства
-	Client tbot.Client
-	// Количество часов, после которых аккаунт нужно банить
-	BanAfter int `json:"ban_after"`
-	// Список обрабатываемых групп
-	Groups []string `json:"groups"`
-	// Список администраторов бота
-	Admins map[string]*User `json:"admins"`
-	// Список отслеживаемых пользователей
-	Users map[string]*User `json:"users"`
+	client tbot.Client
+	// Объект базы данных
+	db *sql.DB
 }
 
 var (
 	zruty zrutyBot
 )
 
-func init() {
-	if zruty.Admins == nil {
-		zruty.Admins = make(map[string]*User)
+// main инициализирует и запускает бота, выполняя следующие действия:
+// 1. Открывает подключение к базе данных и применяет миграции.
+// 2. Инициализирует объект бота, загружая конфигурацию.
+// 3. Настраивает обработку системных сигналов для корректного завершения работы.
+// 4. Создаёт и настраивает объект Telegram бота, регистрируя команды и обработчики сообщений.
+// 5. Запускает сервер бота и уведомляет администраторов о начале работы.
+// 6. Периодически проверяет пользователей, применяя правила бана.
+func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	db := openDB("zruty.sqlite3")
+	defer db.Close()
+	if err := applyMigrations(db); err != nil {
+		log.Fatalf("❌ Ошибка применения миграций: %v", err)
 	}
-	if zruty.Users == nil {
-		zruty.Users = make(map[string]*User)
+	zruty.db = db
+	if err := zruty.init(); err != nil {
+		log.Fatalf("❌ Ошибка инициализации бота: %v", err)
 	}
-	if _, err := os.Stat("config.json"); err == nil {
-		zruty.restoreBackup()
-	} else {
-		log.Fatalf("Недоступен файл конфигурации: %v", err)
-	}
-	// Инициализация ГПСЧ
-	rand.Seed(time.Now().UnixNano())
-
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func(b *zrutyBot) {
 		<-c
 		b.shutdown()
 	}(&zruty)
-}
-
-func main() {
-	bot := tbot.New(zruty.Token)
-	log.Print("Бот создан…")
-	zruty.Client = *bot.Client()
+	bot := tbot.New(zruty.token)
+	log.Print("✅ Бот создан…")
+	zruty.client = *bot.Client()
 
 	bot.HandleMessage(`^/start.*`, startHandler)
 	bot.HandleMessage(`^/report.*`, reportHandler)
-	bot.HandleMessage(`^/backup.*`, backupHandler)
 	bot.HandleMessage(``, defaultHandler)
 
 	go func(bot *tbot.Server) {
@@ -81,8 +76,8 @@ func main() {
 			log.Fatal(err)
 		}
 	}(bot)
-	log.Print("Бот запущен…")
-	zruty.notifyAdmins("бот начал работу…")
+	log.Print("🚀 Бот запущен…")
+	zruty.notifyAdmins("😎 Бот начал работу…")
 
 	// Функция для запуска проверки пользователей с определённым интервалом
 	func(b *zrutyBot) {
