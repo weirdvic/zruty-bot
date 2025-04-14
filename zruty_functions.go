@@ -294,7 +294,7 @@ func (b *zrutyBot) checkUsers() {
 		u.check_passed_at  
 	FROM users u
 	LEFT JOIN user_chats uc ON u.id = uc.user_id
-	LEFT JOIN chats c ON uc.group_id = c.chat_id
+	LEFT JOIN chats c ON uc.chat_id = c.chat_id
 	WHERE u.check_passed_at = NULL
 	`)
 	if err != nil {
