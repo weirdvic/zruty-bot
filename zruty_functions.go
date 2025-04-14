@@ -106,7 +106,7 @@ func (b *zrutyBot) isAdmin(id string) bool {
 		log.Printf("❌ Ошибка при проверке администратора: %v", err)
 		return false
 	}
-	err = b.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM admins WHERE id = ?)`, uid).Scan(&exists)
+	err = b.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM admins WHERE user_id = ?)`, uid).Scan(&exists)
 	if err != nil {
 		log.Printf("❌ Ошибка при проверке администратора: %v", err)
 		return false
@@ -248,7 +248,7 @@ func (b *zrutyBot) delUser(id string) {
 		return
 	}
 	if b.isAdmin(id) {
-		_, err = tx.Exec(`DELETE FROM admins WHERE id = ?`, id)
+		_, err = tx.Exec(`DELETE FROM admins WHERE user_id = ?`, id)
 		if err != nil {
 			log.Println("❌ Ошибка удаления администратора: %w", err)
 		} else {
