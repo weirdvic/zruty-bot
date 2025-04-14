@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 
@@ -160,8 +159,5 @@ func defaultHandler(m *tbot.Message) {
 			lastName,
 			username,
 		)
-
-		// Удаляем пользователя из таблиц users и user_groups
-		zruty.delUser(strconv.Itoa(uid))
 	}
 }
