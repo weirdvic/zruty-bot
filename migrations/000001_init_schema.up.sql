@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS chats (
     title TEXT,
     username TEXT,
     chat_type TEXT
-)
+);
 
 CREATE TABLE IF NOT EXISTS user_chats (
     user_id INTEGER,
