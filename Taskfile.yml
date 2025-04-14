@@ -31,6 +31,15 @@ tasks:
       - "{{.RUNTIME}} rm {{.BOT_NAME}} || true"
       - "{{.RUNTIME}} run --name={{.BOT_NAME}} --restart=always --detach {{.BOT_NAME}}"
 
+  build_linux:
+    desc: "Build the binary for linux"
+    env:
+      GOOS: linux
+      GOARCH: amd64
+      CGO_ENABLED: 1
+    cmds:
+      - go build -o zruty-bot .
+
   new-migration:
     cmds:
     - migrate create -ext sql -dir migrations/ -seq -digits 6 {{.CLI_ARGS}}

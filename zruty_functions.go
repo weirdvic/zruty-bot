@@ -372,7 +372,7 @@ func (b *zrutyBot) checkUsers() {
 // через Telegram API. В случае ошибки при получении списка администраторов,
 // чтении идентификатора администратора или отправке сообщения, ошибка логируется.
 func (b *zrutyBot) notifyAdmins(message string) {
-	rows, err := b.db.Query(`SELECT id FROM admins`)
+	rows, err := b.db.Query(`SELECT user_id FROM admins`)
 	if err != nil {
 		log.Printf("❌ notifyAdmins: ошибка при получении списка админов: %v", err)
 		return
@@ -382,7 +382,7 @@ func (b *zrutyBot) notifyAdmins(message string) {
 	for rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err != nil {
-			log.Printf("❌ notifyAdmins: ошибка чтения admin id %v: %v", id, err)
+			log.Printf("❌ notifyAdmins: ошибка чтения admin user_id %v: %v", id, err)
 			continue
 		}
 
