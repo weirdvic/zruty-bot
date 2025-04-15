@@ -135,7 +135,7 @@ func (b *zrutyBot) isUser(id string) bool {
 // Возвращает true, если группа найдена, иначе false.
 func (b *zrutyBot) isValidGroup(id string) bool {
 	var valid bool
-	err := b.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM groups WHERE id = ?)`, id).Scan(&valid)
+	err := b.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM chats WHERE chat_id = ?)`, id).Scan(&valid)
 	if err != nil {
 		log.Printf("❌ Ошибка при проверке isValidGroup(%s): %v", id, err)
 		return false
