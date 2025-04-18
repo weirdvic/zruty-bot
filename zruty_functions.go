@@ -192,19 +192,20 @@ func (b *zrutyBot) addUsers(m *tbot.Message) {
 				continue
 			}
 			log.Printf("✅ Добавлен новый пользователь %s %s (@%s)", u.FirstName, u.LastName, u.Username)
-			usersAdded++
 		} else {
 			log.Printf("🔄 Пользователь %s %s (@%s) уже отслеживается", u.FirstName, u.LastName, u.Username)
 		}
 
 		// Убедимся, что есть связь пользователь-группа
 		_, err = b.db.Exec(`
-			INSERT OR IGNORE INTO user_groups (user_id, group_id)
+			INSERT OR IGNORE INTO user_chats (user_id, group_id)
 			VALUES (?, ?)
 		`, uid, groupID)
 		if err != nil {
 			log.Printf("❌ Ошибка записи связи user->group: %v", err)
+			continue
 		}
+		usersAdded++
 	}
 
 	log.Printf("✅ Добавлено новых пользователей: %d / %d", usersAdded, len(users))
