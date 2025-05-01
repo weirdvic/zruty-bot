@@ -123,7 +123,7 @@ func defaultHandler(m *tbot.Message) {
 	err := zruty.db.QueryRow(`
 		SELECT username, first_name, last_name
 		FROM users
-		WHERE id = ? AND check_passed_at != NULL
+		WHERE id = ? AND check_passed_at IS NOT NULL
 	`, uid).Scan(&username, &firstName, &lastName)
 
 	switch {
