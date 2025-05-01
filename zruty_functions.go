@@ -198,11 +198,11 @@ func (b *zrutyBot) addUsers(m *tbot.Message) {
 
 		// Убедимся, что есть связь пользователь-группа
 		_, err = b.db.Exec(`
-			INSERT OR IGNORE INTO user_chats (user_id, group_id)
+			INSERT OR IGNORE INTO user_chats (user_id, chat_id)
 			VALUES (?, ?)
 		`, uid, groupID)
 		if err != nil {
-			log.Printf("❌ Ошибка записи связи user->group: %v", err)
+			log.Printf("❌ Ошибка записи связи user->chat: %v", err)
 			continue
 		}
 		usersAdded++
