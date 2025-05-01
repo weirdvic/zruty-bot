@@ -333,7 +333,7 @@ func (b *zrutyBot) checkUsers() {
 		}
 
 		// Если пользователь находится в группе, но не прошёл проверку
-		if time.Since(u.firstSeenAt).Hours() > float64(banAfter) {
+		if u.firstSeenAt.Valid && time.Since(u.firstSeenAt.Time).Hours() > float64(banAfter) {
 			log.Printf("Кикаем пользователя @%s", u.username)
 
 			err = b.client.KickChatMember(u.groupID, u.userID)
@@ -401,7 +401,20 @@ func (b *zrutyBot) notifyAdmins(message string) {
 	}
 }
 
+// shutdown завершает работу бота, уведомляя администраторов о его остановке.
+// После отправки уведомления, приложение завершает выполнение, используя os.Exit(0).
 func (b *zrutyBot) shutdown() {
 	b.notifyAdmins("бот остановлен…")
 	os.Exit(0)
+}
+
+// durationSince возвращает длительность времени, прошедшего с момента времени t.
+// Если t.Valid == false, то возвращается nil.
+// Результат округляется до ближайшей секунды.
+func durationSince(t sql.NullTime) *time.Duration {
+	if t.Valid {
+		d := time.Since(t.Time).Round(time.Second)
+		return &d
+	}
+	return nil
 }

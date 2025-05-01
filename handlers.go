@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/yanzay/tbot/v2"
 )
@@ -76,13 +75,19 @@ func reportHandler(m *tbot.Message) {
 		i := 1
 		for _, u := range users {
 			groupTitles := strings.Join(userGroups[u.userID], ", ")
+			var timeSinceStr string
+			if duration := durationSince(u.firstSeenAt); duration != nil {
+				timeSinceStr = duration.String()
+			} else {
+				timeSinceStr = "unknown"
+			}
 			reportBuilder.WriteString(fmt.Sprintf(
 				"%d.\t%s %s @%s %s назад\nВ чатах: %s\n",
 				i,
 				u.firstName,
 				u.lastName,
 				u.username,
-				time.Since(u.firstSeenAt).Round(time.Second),
+				timeSinceStr,
 				groupTitles,
 			))
 			i++
