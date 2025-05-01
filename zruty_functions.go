@@ -296,7 +296,7 @@ func (b *zrutyBot) checkUsers() {
 	FROM users u
 	LEFT JOIN user_chats uc ON u.id = uc.user_id
 	LEFT JOIN chats c ON uc.chat_id = c.chat_id
-	WHERE u.check_passed_at = NULL
+	WHERE u.check_passed_at IS NULL
 	`)
 	if err != nil {
 		log.Printf("❌ Ошибка получения пользователей: %v", err)
