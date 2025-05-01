@@ -21,8 +21,8 @@ type user struct {
 	groupID       string
 	groupTitle    string
 	isBot         bool
-	firstSeenAt   time.Time
-	checkPassedAt time.Time
+	firstSeenAt   sql.NullTime
+	checkPassedAt sql.NullTime
 }
 
 type zrutyBot struct {
