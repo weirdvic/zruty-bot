@@ -329,6 +329,7 @@ func (b *zrutyBot) checkUsers() {
 		inGroup := b.isInGroup(u.groupID, u.userID)
 		if !inGroup {
 			log.Printf("✅ Пользователь @%s больше не в группе %s", u.username, u.groupTitle)
+			b.delUser(uid)
 			continue
 		}
 
