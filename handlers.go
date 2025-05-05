@@ -119,9 +119,9 @@ func defaultHandler(m *tbot.Message) {
 	// Проверка — отправил ли сообщение один из отслеживаемых пользователей
 	uid := m.From.ID
 	var (
-		username   string
-		firstName  string
-		lastName   string
+		username   sql.NullString
+		firstName  sql.NullString
+		lastName   sql.NullString
 		userExists bool
 	)
 
@@ -136,7 +136,7 @@ func defaultHandler(m *tbot.Message) {
 		// Пользователя нет или он уже прошёл проверку
 		return
 	case err != nil:
-		log.Printf("❌ Ошибка при проверке пользователя %d @%s: %v", uid, username, err)
+		log.Printf("❌ Ошибка при проверке пользователя %d @%v: %v", uid, username, err)
 		return
 	default:
 		userExists = true
@@ -148,18 +148,18 @@ func defaultHandler(m *tbot.Message) {
 			UPDATE users SET check_passed_at = CURRENT_TIMESTAMP WHERE id = ?
 		`, uid)
 		if err != nil {
-			log.Printf("❌ Не удалось обновить check_passed для пользователя %d @%s: %v", uid, username, err)
+			log.Printf("❌ Не удалось обновить check_passed для пользователя %d @%v: %v", uid, username, err)
 			return
 		}
 
 		// Уведомляем админов
 		zruty.notifyAdmins(fmt.Sprintf(
-			"✅ Пользователь %d @%s прошёл проверку",
+			"✅ Пользователь %d @%v прошёл проверку",
 			uid,
 			username,
 		))
 
-		log.Printf("✅ Пользователь %s %s(@%s) написал сообщение в чат!",
+		log.Printf("✅ Пользователь %v %v(@%v) написал сообщение в чат!",
 			firstName,
 			lastName,
 			username,
