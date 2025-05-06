@@ -1,3 +1,3 @@
 DELETE FROM settings
-WHERE key IN ('underAttack', 'mutedDuration')
+WHERE key IN ('underAttack', 'muteDuration')
 ;
