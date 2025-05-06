@@ -36,9 +36,17 @@ func startHandler(m *tbot.Message) {
 func reportHandler(m *tbot.Message) {
 	// Проверяем, что сообщение от админа и это приватный чат
 	if !zruty.isAdmin(m.Chat.ID) || m.Chat.Type != "private" {
+		notAdminMessage, err := getSetting(zruty.db, "notAdminMessage")
+		if err != nil {
+			log.Printf("❌ Не удалось прочитать notAdminMessage: %v", err)
+			notAdminMessage = `Вы не являетесь администратором этого бота.`
+		}
+		_, err = zruty.client.SendMessage(m.Chat.ID, notAdminMessage)
+		if err != nil {
+			log.Printf("❌ Не удалось отправить сообщение: %v", err)
+		}
 		return
 	}
-
 	rows, err := zruty.db.Query(`
 		SELECT
 			u.id,

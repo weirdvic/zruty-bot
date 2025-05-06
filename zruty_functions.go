@@ -229,13 +229,13 @@ func (b *zrutyBot) addUsers(m *tbot.Message) {
 	log.Printf("✅ Добавлено новых пользователей: %d / %d", usersAdded, len(users))
 }
 
-// muteUser ограничивает возможности пользователя в чате на заданное количество секунд.
+// restrictUser ограничивает возможности пользователя в чате на заданное количество секунд.
 // Параметры:
 // - chatID: идентификатор чата, в котором нужно замутить пользователя.
 // - userID: идентификатор пользователя, которому ограничиваются возможности в чате.
 // - duration: продолжительность ограничения в секундах.
-func (b *zrutyBot) muteUser(chatID string, userID int, duration int) {
-	until := time.Now().Add(time.Duration(duration) * time.Second)
+func (b *zrutyBot) restrictUser(chatID string, userID int) {
+	until := time.Now().Add(367 * 24 * time.Hour) // Restrict forever
 	permissions := &tbot.ChatPermissions{
 		CanSendMessages:       false,
 		CanSendMediaMessages:  false,
@@ -250,7 +250,7 @@ func (b *zrutyBot) muteUser(chatID string, userID int, duration int) {
 	if err != nil {
 		log.Printf("❌ Не удалось замутить пользователя %d: %v", userID, err)
 	}
-	log.Printf("🚫 Пользователь %d замучен на %d секунд", userID, duration)
+	log.Printf("🚫 Пользователю %d запрещено писать сообщения в чат %s", userID, chatID)
 }
 
 // welcomeUsers отправляет новым пользователям приветственное сообщение
@@ -276,7 +276,8 @@ func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 	}
 	for _, u := range users {
 		if underAttack {
-			b.muteUser(m.Chat.ID, u.ID, muteDuration)
+			b.restrictUser(m.Chat.ID, u.ID)
+			b.challengeUser()
 		}
 		_, err := b.client.SendMessage(
 			m.Chat.ID,
