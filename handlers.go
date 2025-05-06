@@ -140,6 +140,7 @@ func defaultHandler(m *tbot.Message) {
 	}
 	// Если в чате появились новые участники
 	if len(m.NewChatMembers) > 0 {
+		log.Printf("👥 Новые участники: %v", m.NewChatMembers)
 		zruty.addUsers(m)
 		zruty.welcomeUsers(m)
 		return
