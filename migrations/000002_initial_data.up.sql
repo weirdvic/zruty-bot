@@ -1,7 +1,7 @@
 -- Вставка стандартных настроек
 INSERT INTO settings (key, value)
     VALUES 
-    ('ban_after', '23')
+    ('banAfter', '23')
 ;
 
 INSERT INTO users (id, username, first_seen_at, check_passed_at)

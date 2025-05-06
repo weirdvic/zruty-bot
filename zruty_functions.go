@@ -18,22 +18,22 @@ import (
 // Если токен из переменной окружения отличается от токена в БД, то
 // обновляет его в БД.
 func (b *zrutyBot) init() error {
-	envToken := os.Getenv("BOT_TOKEN")
-	if envToken != "" {
+	botTokenEnv := os.Getenv("BOT_TOKEN")
+	if botTokenEnv != "" {
 		// Если переменная задана, проверим и, если нужно, обновим БД
 		var storedToken string
-		err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'token'`).Scan(&storedToken)
+		err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'botToken'`).Scan(&storedToken)
 		switch {
 		case err == sql.ErrNoRows:
-			_, err = b.db.Exec(`INSERT INTO settings (key, value) VALUES ('token', ?)`, envToken)
+			_, err = b.db.Exec(`INSERT INTO settings (key, value) VALUES ('botToken', ?)`, botTokenEnv)
 			if err != nil {
 				return fmt.Errorf("не удалось записать токен бота в БД: %w", err)
 			}
 			log.Println("✅ Токен бота записан в БД из переменной окружения")
 		case err != nil:
 			return fmt.Errorf("ошибка чтения токена бота из БД: %w", err)
-		case storedToken != envToken:
-			_, err = b.db.Exec(`UPDATE settings SET value = ? WHERE key = 'token'`, envToken)
+		case storedToken != botTokenEnv:
+			_, err = b.db.Exec(`UPDATE settings SET value = ? WHERE key = 'botToken'`, botTokenEnv)
 			if err != nil {
 				return fmt.Errorf("не удалось обновить токен бота в БД: %w", err)
 			}
@@ -41,11 +41,11 @@ func (b *zrutyBot) init() error {
 		default:
 			log.Println("✅ Токен бота в БД совпадает с переменной окружения")
 		}
-		b.token = envToken
+		b.token = botTokenEnv
 	} else {
 		// Если переменная не задана, читаем из БД
 		var storedToken string
-		err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'token'`).Scan(&storedToken)
+		err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'botToken'`).Scan(&storedToken)
 		if err == sql.ErrNoRows || storedToken == "" {
 			return fmt.Errorf("не задан токен: переменная BOT_TOKEN пуста и отсутствует в settings")
 		} else if err != nil {
@@ -343,7 +343,7 @@ func (b *zrutyBot) delUser(id string) {
 // checkUsers проверяет зарегистрированных пользователей и банит лишних
 func (b *zrutyBot) checkUsers() {
 	var banAfter int
-	err := b.db.QueryRow(`SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'ban_after'`).Scan(&banAfter)
+	err := b.db.QueryRow(`SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'banAfter'`).Scan(&banAfter)
 	if err != nil {
 		log.Println("❌ Ошибка чтения токена из БД: %w", err)
 		return
