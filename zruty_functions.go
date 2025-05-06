@@ -364,10 +364,10 @@ func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 			m.Chat.ID,
 			fmt.Sprintf(
 				welcomeMessage,
-				u.ID,
 				u.FirstName,
+				u.ID,
 			),
-			tbot.OptParseModeHTML,
+			tbot.OptParseModeMarkdown,
 		)
 		if err != nil {
 			log.Printf("❌ Не удалось отправить приветственное сообщение: %v", err)

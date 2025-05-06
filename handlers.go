@@ -244,6 +244,6 @@ func (b *zrutyBot) callbackHandler(cq *tbot.CallbackQuery) {
 			return
 		}
 		b.unrestrictUser(cq.Message.Chat.ID, challengeUserID)
-		log.Printf("✅ Пользователю %d разрешено писать сообщения в чат %s", challengeUserID, cq.Message.Chat.ID)
+		log.Printf("✅ Пользователь %d прошёл верификацию в чате %s", challengeUserID, cq.Message.Chat.ID)
 	}
 }
