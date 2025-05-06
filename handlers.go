@@ -136,7 +136,6 @@ func reportHandler(m *tbot.Message) {
 func defaultHandler(m *tbot.Message) {
 	if !zruty.isValidGroup(m.Chat.ID) ||
 		(m.Chat.Type != "supergroup" && m.Chat.Type != "group") {
-		log.Printf("❌ Неизвестный тип чата: %s", m.Chat.Type)
 		return
 	}
 	// Если в чате появились новые участники
