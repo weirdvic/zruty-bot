@@ -279,8 +279,13 @@ func (b *zrutyBot) unrestrictUser(chatID string, userID int) {
 // - button: кнопка, предоставляющая пользователю возможность подтвердить, что он не робот.
 // Возвращает идентификатор отправленного сообщения.
 func (b *zrutyBot) sendChallengeMsg(chatID string, button tbot.InlineKeyboardButton) (messageID int) {
+	challengeMessage, err := getSetting(b.db, "challengeMessage")
+	if err != nil {
+		log.Printf("❌ Не удалось прочитать challengeMessage: %v", err)
+		challengeMessage = "Подтвердите, что вы не робот"
+	}
 	msg, err := b.client.SendMessage(chatID,
-		"Нажмите кнопку чтобы продолжить",
+		challengeMessage,
 		tbot.OptInlineKeyboardMarkup(&tbot.InlineKeyboardMarkup{
 			InlineKeyboard: [][]tbot.InlineKeyboardButton{
 				{button},
@@ -348,15 +353,7 @@ func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 		muteDuration = 0
 	}
 	for _, u := range users {
-		if underAttack {
-			b.restrictUser(m.Chat.ID, u.ID)
-			challengeButton := tbot.InlineKeyboardButton{
-				Text:         "Я не робот!",
-				CallbackData: "verify_" + strconv.Itoa(u.ID),
-			}
-			challengeMsgID := b.sendChallengeMsg(m.Chat.ID, challengeButton)
-			go b.verifyUser(m.Chat.ID, u.ID, challengeMsgID)
-		}
+		// Отправляем приветственное сообщение
 		_, err := b.client.SendMessage(
 			m.Chat.ID,
 			fmt.Sprintf(
@@ -367,7 +364,17 @@ func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 			tbot.OptParseModeHTML,
 		)
 		if err != nil {
-			log.Print(err)
+			log.Printf("❌ Не удалось отправить приветственное сообщение: %v", err)
+		}
+		// Если включен режим "Под атакой", то запускаем механизм проверки
+		if underAttack {
+			b.restrictUser(m.Chat.ID, u.ID)
+			challengeButton := tbot.InlineKeyboardButton{
+				Text:         "Я не робот!",
+				CallbackData: "verify_" + strconv.Itoa(u.ID),
+			}
+			challengeMsgID := b.sendChallengeMsg(m.Chat.ID, challengeButton)
+			go b.verifyUser(m.Chat.ID, u.ID, challengeMsgID)
 		}
 	}
 }

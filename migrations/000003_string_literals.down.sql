@@ -3,5 +3,6 @@ WHERE key IN (
     'greetAdminMessage',
     'notAdminMessage',
     'kickMessage',
-    'welcomeMessage'
+    'welcomeMessage',
+    'challengeMessage'
     );
