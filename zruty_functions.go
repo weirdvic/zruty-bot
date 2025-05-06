@@ -360,13 +360,10 @@ func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 	}
 	for _, u := range users {
 		// Отправляем приветственное сообщение
+		messageText := fmt.Sprintf(welcomeMessage, u.FirstName, u.ID)
 		_, err := b.client.SendMessage(
 			m.Chat.ID,
-			fmt.Sprintf(
-				welcomeMessage,
-				u.FirstName,
-				u.ID,
-			),
+			messageText,
 			tbot.OptParseModeMarkdown,
 		)
 		if err != nil {
