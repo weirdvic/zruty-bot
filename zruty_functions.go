@@ -349,8 +349,13 @@ func (b *zrutyBot) checkUsers() {
 					`✅ Пользователь <a href="tg://user?id=%d">%s</a> был удалён из группы %s`,
 					u.userID, u.firstName, u.groupTitle,
 				))
-
-				_, err := b.client.SendMessage(
+				var kickMessage string
+				err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'kickMessage'`).Scan(&kickMessage)
+				if err != nil {
+					log.Printf("❌ Не удалось прочитать kickMessage: %v", err)
+					kickMessage = `Пользователь %s покидает чат: %s`
+				}
+				_, err = b.client.SendMessage(
 					u.groupID,
 					fmt.Sprintf(
 						kickMessage,

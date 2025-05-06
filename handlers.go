@@ -11,12 +11,24 @@ import (
 
 func startHandler(m *tbot.Message) {
 	if m.Chat.Type == "private" && zruty.isAdmin(m.Chat.ID) {
-		_, err := zruty.client.SendMessage(m.Chat.ID, greetAdmin)
+		var greetAdminMessage string
+		err := zruty.db.QueryRow(`SELECT value FROM settings WHERE key = 'greetAdminMessage'`).Scan(&greetAdminMessage)
+		if err != nil {
+			log.Printf("❌ Не удалось прочитать greetAdminMessage: %v", err)
+			greetAdminMessage = `Приветствую!`
+		}
+		_, err = zruty.client.SendMessage(m.Chat.ID, greetAdminMessage)
 		if err != nil {
 			log.Print(err)
 		}
 	} else {
-		_, err := zruty.client.SendMessage(m.Chat.ID, notAdmin)
+		var notAdminMessage string
+		err := zruty.db.QueryRow(`SELECT value FROM settings WHERE key = 'notAdminMessage'`).Scan(&notAdminMessage)
+		if err != nil {
+			log.Printf("❌ Не удалось прочитать notAdminMessage: %v", err)
+			notAdminMessage = `Вы не являетесь администратором этого бота.`
+		}
+		_, err = zruty.client.SendMessage(m.Chat.ID, notAdminMessage)
 		if err != nil {
 			log.Print(err)
 		}
@@ -105,6 +117,15 @@ func reportHandler(m *tbot.Message) {
 	}
 }
 
+// defaultHandler обрабатывает любые сообщения, отправленные в чате.
+// Он не реагирует на сообщения, отправленные ботами.
+//
+// Если в чате появились новые участники, он добавляет их в базу данных
+// и отправляет им приветственное сообщение.
+//
+// Если отправитель сообщения уже является отслеживаемым,
+// обновляется отметка о прохождении проверки
+// и уведомляются администраторы.
 func defaultHandler(m *tbot.Message) {
 	if !zruty.isValidGroup(m.Chat.ID) ||
 		(m.Chat.Type != "supergroup" && m.Chat.Type != "group") {
