@@ -233,24 +233,97 @@ func (b *zrutyBot) addUsers(m *tbot.Message) {
 // Параметры:
 // - chatID: идентификатор чата, в котором нужно замутить пользователя.
 // - userID: идентификатор пользователя, которому ограничиваются возможности в чате.
-// - duration: продолжительность ограничения в секундах.
 func (b *zrutyBot) restrictUser(chatID string, userID int) {
-	until := time.Now().Add(367 * 24 * time.Hour) // Restrict forever
-	permissions := &tbot.ChatPermissions{
-		CanSendMessages:       false,
-		CanSendMediaMessages:  false,
-		CanSendPolls:          false,
-		CanSendOtherMessages:  false,
-		CanAddWebPagePreviews: false,
-		CanChangeInfo:         false,
-		CanInviteUsers:        false,
-		CanPinMessages:        false,
-	}
-	err := b.client.RestrictChatMember(chatID, userID, permissions, tbot.OptUntilDate(until))
+	err := b.client.RestrictChatMember(
+		chatID,
+		userID,
+		&tbot.ChatPermissions{
+			CanSendMessages:       false,
+			CanSendMediaMessages:  false,
+			CanSendPolls:          false,
+			CanSendOtherMessages:  false,
+			CanAddWebPagePreviews: false,
+		},
+	)
 	if err != nil {
 		log.Printf("❌ Не удалось замутить пользователя %d: %v", userID, err)
 	}
 	log.Printf("🚫 Пользователю %d запрещено писать сообщения в чат %s", userID, chatID)
+}
+
+// unrestrictUser восстанавливает возможности пользователя в чате.
+// Параметры:
+// - chatID: идентификатор чата, в котором нужно восстановить права пользователя.
+// - userID: идентификатор пользователя, которому восстанавливаются права в чате.
+func (b *zrutyBot) unrestrictUser(chatID string, userID int) {
+	err := b.client.RestrictChatMember(
+		chatID,
+		userID,
+		&tbot.ChatPermissions{
+			CanSendMessages:       true,
+			CanSendMediaMessages:  true,
+			CanSendPolls:          true,
+			CanSendOtherMessages:  true,
+			CanAddWebPagePreviews: true,
+		},
+	)
+	if err != nil {
+		log.Printf("❌ Не удалось вернуть права пользователя %d: %v", userID, err)
+	}
+	log.Printf("🚫 Пользователю %d снова разрешено писать сообщения в чат %s", userID, chatID)
+}
+
+// sendChallengeMsg отправляет сообщение с кнопкой для верификации пользователя.
+// Параметры:
+// - chatID: идентификатор чата, в который отправляется сообщение.
+// - button: кнопка, предоставляющая пользователю возможность подтвердить, что он не робот.
+// Возвращает идентификатор отправленного сообщения.
+func (b *zrutyBot) sendChallengeMsg(chatID string, button tbot.InlineKeyboardButton) (messageID int) {
+	msg, err := b.client.SendMessage(chatID,
+		"Нажмите кнопку чтобы продолжить",
+		tbot.OptInlineKeyboardMarkup(&tbot.InlineKeyboardMarkup{
+			InlineKeyboard: [][]tbot.InlineKeyboardButton{
+				{button},
+			},
+		}))
+	if err != nil {
+		log.Printf("❌ Не удалось отправить сообщение для верификации пользователя: %v", err)
+		return 0
+	}
+	return msg.MessageID
+}
+
+// verifyUser - функция, которая ждет 30 секунд, а затем проверяет, может ли пользователь
+// отправлять сообщения в чате. Если пользователь не может отправлять сообщения,
+// то он не прошел верификацию. Функция также удаляет сообщение для
+// верификации пользователя.
+func (b *zrutyBot) verifyUser(chatID string, userID int, challengeMsgID int) {
+	challengeTime, err := getSetting(b.db, "challengeTime")
+	if err != nil {
+		log.Printf("❌ Ошибка при получении challengeTime: %v", err)
+		challengeTime = "30"
+	}
+	defaultSleep := 30
+	sleep := defaultSleep
+	if val, err := strconv.Atoi(challengeTime); err == nil {
+		sleep = val
+	} else {
+		log.Printf("❌ Ошибка при преобразовании challengeTime (%q) в число: %v. Используется значение по умолчанию: %d", challengeTime, err, defaultSleep)
+	}
+	time.Sleep(time.Duration(sleep) * time.Second)
+	chatMember, err := b.client.GetChatMember(chatID, userID)
+	if err != nil {
+		log.Printf("❌ Не удалось получить информацию о пользователе: %v", err)
+		return
+	}
+	if !chatMember.CanSendMessages {
+		log.Printf("✅ Пользователь %d не прошел верификацию в чате %s", userID, chatID)
+		// TODO: решить что делаем с пользователями, которые не прошли верификацию
+	}
+	err = b.client.DeleteMessage(chatID, challengeMsgID)
+	if err != nil {
+		log.Printf("❌ Не удалось удалить сообщение для верификации пользователя: %v", err)
+	}
 }
 
 // welcomeUsers отправляет новым пользователям приветственное сообщение
@@ -277,7 +350,12 @@ func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 	for _, u := range users {
 		if underAttack {
 			b.restrictUser(m.Chat.ID, u.ID)
-			b.challengeUser()
+			challengeButton := tbot.InlineKeyboardButton{
+				Text:         "Я не робот!",
+				CallbackData: "verify_" + strconv.Itoa(u.ID),
+			}
+			challengeMsgID := b.sendChallengeMsg(m.Chat.ID, challengeButton)
+			go b.verifyUser(m.Chat.ID, u.ID, challengeMsgID)
 		}
 		_, err := b.client.SendMessage(
 			m.Chat.ID,

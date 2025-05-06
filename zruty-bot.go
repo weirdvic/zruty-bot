@@ -70,6 +70,7 @@ func main() {
 	bot.HandleMessage(`^/report.*`, reportHandler)
 	bot.HandleMessage(`^/underAttackSwitch.*`, underAttackSwitchHandler)
 	bot.HandleMessage(``, defaultHandler)
+	bot.HandleCallback(zruty.callbackHandler)
 
 	go func(bot *tbot.Server) {
 		err := bot.Start()

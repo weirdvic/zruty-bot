@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/yanzay/tbot/v2"
@@ -221,5 +222,27 @@ func underAttackSwitchHandler(m *tbot.Message) {
 	_, err = zruty.client.SendMessage(m.Chat.ID, fmt.Sprintf("Значение underAttack изменено на: %s", underAttack))
 	if err != nil {
 		log.Printf("❌ Ошибка отправки сообщения: %v", err)
+	}
+}
+
+// callbackHandler - обработчик callback запросов
+// Он обрабатывает callback'и, связанные с кнопкой верификации,
+// и в ответ на них разрешает пользователю писать сообщения в чат.
+func (b *zrutyBot) callbackHandler(cq *tbot.CallbackQuery) {
+	// Случай нажатия на кнопку верификации
+	if cq.Data != "" && len(cq.Data) > 7 && cq.Data[:7] == "verify_" {
+		challengeUserID, err := strconv.Atoi(strings.TrimPrefix(cq.Data, "verify_"))
+		if err != nil {
+			log.Printf("❌ Не удалось извлечь ID пользователя из %s: %v", cq.Data, err)
+			_ = b.client.AnswerCallbackQuery(cq.ID, tbot.OptText("❌ Не удалось извлечь ID пользователя из сообщения"))
+			return
+		}
+
+		if cq.From.ID != challengeUserID {
+			_ = b.client.AnswerCallbackQuery(cq.ID, tbot.OptText("❌ Вы не можете подтвердить другого пользователя"))
+			return
+		}
+		b.unrestrictUser(cq.Message.Chat.ID, challengeUserID)
+		log.Printf("✅ Пользователю %d разрешено писать сообщения в чат %s", challengeUserID, cq.Message.Chat.ID)
 	}
 }
