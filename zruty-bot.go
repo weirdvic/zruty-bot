@@ -68,6 +68,7 @@ func main() {
 
 	bot.HandleMessage(`^/start.*`, startHandler)
 	bot.HandleMessage(`^/report.*`, reportHandler)
+	bot.HandleMessage(`^/underAttackSwitch.*`, underAttackSwitchHandler)
 	bot.HandleMessage(``, defaultHandler)
 
 	go func(bot *tbot.Server) {

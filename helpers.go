@@ -84,3 +84,21 @@ func isSettingEnabled(db *sql.DB, key string) (bool, error) {
 
 	return value == "true", nil
 }
+
+// flipSetting инвертирует булево значение настройки с указанным key
+// в базе данных. Если настройки с указанным key не существует, то
+// ничего не происходит. Если произошла какая-либо ошибка, то
+// возвращается error.
+func flipSetting(db *sql.DB, key string) error {
+	_, err := db.Exec(`UPDATE settings SET value = CASE WHEN value = 'true' THEN 'false' ELSE 'true' END WHERE key = ?`, key)
+	return err
+}
+
+// getSetting возвращает значение настройки с указанным key.
+// Если настройки с указанным key не существует, то возвращается пустая строка, nil.
+// Если произошла какая-либо ошибка, то возвращается пустая строка, error.
+func getSetting(db *sql.DB, key string) (string, error) {
+	var value string
+	err := db.QueryRow(`SELECT value FROM settings WHERE key = ?`, key).Scan(&value)
+	return value, err
+}

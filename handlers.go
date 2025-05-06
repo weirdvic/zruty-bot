@@ -11,26 +11,24 @@ import (
 
 func startHandler(m *tbot.Message) {
 	if m.Chat.Type == "private" && zruty.isAdmin(m.Chat.ID) {
-		var greetAdminMessage string
-		err := zruty.db.QueryRow(`SELECT value FROM settings WHERE key = 'greetAdminMessage'`).Scan(&greetAdminMessage)
+		greetAdminMessage, err := getSetting(zruty.db, "greetAdminMessage")
 		if err != nil {
 			log.Printf("❌ Не удалось прочитать greetAdminMessage: %v", err)
 			greetAdminMessage = `Приветствую!`
 		}
 		_, err = zruty.client.SendMessage(m.Chat.ID, greetAdminMessage)
 		if err != nil {
-			log.Print(err)
+			log.Printf("❌ Не удалось отправить сообщение: %v", err)
 		}
 	} else {
-		var notAdminMessage string
-		err := zruty.db.QueryRow(`SELECT value FROM settings WHERE key = 'notAdminMessage'`).Scan(&notAdminMessage)
+		notAdminMessage, err := getSetting(zruty.db, "notAdminMessage")
 		if err != nil {
 			log.Printf("❌ Не удалось прочитать notAdminMessage: %v", err)
 			notAdminMessage = `Вы не являетесь администратором этого бота.`
 		}
 		_, err = zruty.client.SendMessage(m.Chat.ID, notAdminMessage)
 		if err != nil {
-			log.Print(err)
+			log.Printf("❌ Не удалось отправить сообщение: %v", err)
 		}
 	}
 }
@@ -185,5 +183,35 @@ func defaultHandler(m *tbot.Message) {
 			lastName,
 			username,
 		)
+	}
+}
+
+// underAttackSwitchHandler - переключает режим underAttack. Если сообщение пришло
+// от админа в приватном чате, то переключает режим и отправляет подтверждение.
+func underAttackSwitchHandler(m *tbot.Message) {
+	// Проверяем, что сообщение от админа и это приватный чат
+	if !zruty.isAdmin(m.Chat.ID) || m.Chat.Type != "private" {
+		notAdminMessage, err := getSetting(zruty.db, "notAdminMessage")
+		if err != nil {
+			log.Printf("❌ Не удалось прочитать notAdminMessage: %v", err)
+			notAdminMessage = `Вы не являетесь администратором этого бота.`
+		}
+		_, err = zruty.client.SendMessage(m.Chat.ID, notAdminMessage)
+		if err != nil {
+			log.Printf("❌ Не удалось отправить сообщение: %v", err)
+		}
+		return
+	}
+	err := flipSetting(zruty.db, "underAttack")
+	if err != nil {
+		log.Printf("❌ Не удалось изменить underAttack: %v", err)
+	}
+	underAttack, err := getSetting(zruty.db, "underAttack")
+	if err != nil {
+		log.Printf("❌ Не удалось получить underAttack: %v", err)
+	}
+	_, err = zruty.client.SendMessage(m.Chat.ID, fmt.Sprintf("Значение underAttack изменено на: %s", underAttack))
+	if err != nil {
+		log.Printf("❌ Ошибка отправки сообщения: %v", err)
 	}
 }

@@ -21,8 +21,7 @@ func (b *zrutyBot) init() error {
 	botTokenEnv := os.Getenv("BOT_TOKEN")
 	if botTokenEnv != "" {
 		// Если переменная задана, проверим и, если нужно, обновим БД
-		var storedToken string
-		err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'botToken'`).Scan(&storedToken)
+		storedToken, err := getSetting(b.db, "botToken")
 		switch {
 		case err == sql.ErrNoRows:
 			_, err = b.db.Exec(`INSERT INTO settings (key, value) VALUES ('botToken', ?)`, botTokenEnv)
@@ -44,8 +43,7 @@ func (b *zrutyBot) init() error {
 		b.token = botTokenEnv
 	} else {
 		// Если переменная не задана, читаем из БД
-		var storedToken string
-		err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'botToken'`).Scan(&storedToken)
+		storedToken, err := getSetting(b.db, "botToken")
 		if err == sql.ErrNoRows || storedToken == "" {
 			return fmt.Errorf("не задан токен: переменная BOT_TOKEN пуста и отсутствует в settings")
 		} else if err != nil {
@@ -258,13 +256,12 @@ func (b *zrutyBot) muteUser(chatID string, userID int, duration int) {
 // welcomeUsers отправляет новым пользователям приветственное сообщение
 func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 	var (
-		users          = m.NewChatMembers
-		welcomeMessage string
-		muteDuration   int = 0
+		users            = m.NewChatMembers
+		muteDuration int = 0
 	)
-	err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'welcomeMessage'`).Scan(&welcomeMessage)
+	welcomeMessage, err := getSetting(b.db, "welcomeMessage")
 	if err != nil {
-		log.Printf("❌ Не удалось прочитать kickMessage: %v", err)
+		log.Printf("❌ Не удалось прочитать welcomeMessage: %v", err)
 		welcomeMessage = `Добро пожаловать, <a href="tg://user?id=%d">%s</a>!`
 	}
 	underAttack, err := isSettingEnabled(b.db, "underAttack")
@@ -415,8 +412,7 @@ func (b *zrutyBot) checkUsers() {
 					`✅ Пользователь <a href="tg://user?id=%d">%s</a> был удалён из группы %s`,
 					u.userID, u.firstName, u.groupTitle,
 				))
-				var kickMessage string
-				err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'kickMessage'`).Scan(&kickMessage)
+				kickMessage, err := getSetting(b.db, "kickMessage")
 				if err != nil {
 					log.Printf("❌ Не удалось прочитать kickMessage: %v", err)
 					kickMessage = `Пользователь %s покидает чат: %s`
