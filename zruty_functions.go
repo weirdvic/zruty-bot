@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -281,8 +282,13 @@ func (b *zrutyBot) unrestrictUser(chatID string, userID int) {
 func (b *zrutyBot) sendChallengeMsg(chatID string, button tbot.InlineKeyboardButton) (messageID int) {
 	challengeMessage, err := getSetting(b.db, "challengeMessage")
 	if err != nil {
-		log.Printf("❌ Не удалось прочитать challengeMessage: %v", err)
-		challengeMessage = "Подтвердите, что вы не робот"
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("ℹ️ challengeMessage не найден в БД, используется значение по умолчанию")
+			challengeMessage = "Подтвердите, что вы не робот"
+		} else {
+			log.Printf("❌ Ошибка при получении challengeMessage: %v", err)
+			challengeMessage = "Подтвердите, что вы не робот"
+		}
 	}
 	msg, err := b.client.SendMessage(chatID,
 		challengeMessage,
