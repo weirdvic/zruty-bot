@@ -38,7 +38,7 @@ tasks:
       GOARCH: amd64
       CGO_ENABLED: 1
     cmds:
-      - go build -o zruty-bot .
+      - go build -v -o zruty-bot .
 
   new-migration:
     cmds:
