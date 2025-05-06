@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"log"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -54,4 +55,32 @@ func applyMigrations(db *sql.DB) error {
 
 	log.Println("✅ Миграции успешно применены")
 	return nil
+}
+
+// durationSince возвращает длительность времени, прошедшего с момента времени t.
+// Если t.Valid == false, то возвращается nil.
+// Результат округляется до ближайшей секунды.
+func durationSince(t sql.NullTime) *time.Duration {
+	if t.Valid {
+		d := time.Since(t.Time).Round(time.Second)
+		return &d
+	}
+	return nil
+}
+
+// isSettingEnabled возвращает true, если значение настройки с указанным key
+// равно "true", иначе false. Если настройки с указанным key не существует,
+// то возвращается false, nil. Если произошла какая-либо ошибка, то
+// возвращается false, error.
+func isSettingEnabled(db *sql.DB, key string) (bool, error) {
+	var value string
+	err := db.QueryRow(`SELECT value FROM settings WHERE key = ?`, key).Scan(&value)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return value == "true", nil
 }

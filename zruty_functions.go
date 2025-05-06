@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/yanzay/tbot/v2"
@@ -92,6 +93,25 @@ func (b *zrutyBot) init() error {
 			return fmt.Errorf("не задан BOT_ADMIN_ID и в таблице admins нет записей")
 		}
 		log.Println("✅ Найден хотя бы один админ в базе")
+	}
+
+	// Проверяем переменную UNDER_ATTACK и обновляем значение в БД, если нужно
+	underAttackEnv := os.Getenv("UNDER_ATTACK")
+	switch {
+	case underAttackEnv == "0" || strings.ToLower(underAttackEnv) == "false":
+		// Отключаем режим "Под атакой" в БД
+		_, err := b.db.Exec(`UPDATE settings SET value = 'false' WHERE key = 'underAttack'`)
+		if err != nil {
+			log.Printf("❌ Не удалось отключить режим \"Под атакой\": %v", err)
+		}
+	case underAttackEnv == "1" || strings.ToLower(underAttackEnv) == "true":
+		// Включаем режим "Под атакой" в БД
+		_, err := b.db.Exec(`UPDATE settings SET value = 'true' WHERE key = 'underAttack'`)
+		if err != nil {
+			log.Printf("❌ Не удалось включить режим \"Под атакой\": %v", err)
+		}
+	default:
+		log.Printf("Значение UNDER_ATTACK не распознано: %s", underAttackEnv)
 	}
 
 	return nil
@@ -211,10 +231,56 @@ func (b *zrutyBot) addUsers(m *tbot.Message) {
 	log.Printf("✅ Добавлено новых пользователей: %d / %d", usersAdded, len(users))
 }
 
+// muteUser ограничивает возможности пользователя в чате на заданное количество секунд.
+// Параметры:
+// - chatID: идентификатор чата, в котором нужно замутить пользователя.
+// - userID: идентификатор пользователя, которому ограничиваются возможности в чате.
+// - duration: продолжительность ограничения в секундах.
+func (b *zrutyBot) muteUser(chatID string, userID int, duration int) {
+	until := time.Now().Add(time.Duration(duration) * time.Second)
+	permissions := &tbot.ChatPermissions{
+		CanSendMessages:       false,
+		CanSendMediaMessages:  false,
+		CanSendPolls:          false,
+		CanSendOtherMessages:  false,
+		CanAddWebPagePreviews: false,
+		CanChangeInfo:         false,
+		CanInviteUsers:        false,
+		CanPinMessages:        false,
+	}
+	err := b.client.RestrictChatMember(chatID, userID, permissions, tbot.OptUntilDate(until))
+	if err != nil {
+		log.Printf("❌ Не удалось замутить пользователя %d: %v", userID, err)
+	}
+	log.Printf("🚫 Пользователь %d замучен на %d секунд", userID, duration)
+}
+
 // welcomeUsers отправляет новым пользователям приветственное сообщение
 func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
-	var users = m.NewChatMembers
+	var (
+		users          = m.NewChatMembers
+		welcomeMessage string
+		muteDuration   int = 0
+	)
+	err := b.db.QueryRow(`SELECT value FROM settings WHERE key = 'welcomeMessage'`).Scan(&welcomeMessage)
+	if err != nil {
+		log.Printf("❌ Не удалось прочитать kickMessage: %v", err)
+		welcomeMessage = `Добро пожаловать, <a href="tg://user?id=%d">%s</a>!`
+	}
+	underAttack, err := isSettingEnabled(b.db, "underAttack")
+	if err != nil {
+		log.Printf("❌ Не удалось прочитать underAttack: %v", err)
+		underAttack = false
+	}
+	err = b.db.QueryRow(`SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'muteDuration'`).Scan(&muteDuration)
+	if err != nil {
+		log.Printf("❌ Не удалось прочитать muteDuration: %v", err)
+		muteDuration = 0
+	}
 	for _, u := range users {
+		if underAttack {
+			b.muteUser(m.Chat.ID, u.ID, muteDuration)
+		}
 		_, err := b.client.SendMessage(
 			m.Chat.ID,
 			fmt.Sprintf(
@@ -279,7 +345,7 @@ func (b *zrutyBot) checkUsers() {
 	var banAfter int
 	err := b.db.QueryRow(`SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'ban_after'`).Scan(&banAfter)
 	if err != nil {
-		log.Println("ошибка чтения токена из БД: %w", err)
+		log.Println("❌ Ошибка чтения токена из БД: %w", err)
 		return
 	}
 	rows, err := b.db.Query(`
@@ -412,15 +478,4 @@ func (b *zrutyBot) notifyAdmins(message string) {
 func (b *zrutyBot) shutdown() {
 	b.notifyAdmins("бот остановлен…")
 	os.Exit(0)
-}
-
-// durationSince возвращает длительность времени, прошедшего с момента времени t.
-// Если t.Valid == false, то возвращается nil.
-// Результат округляется до ближайшей секунды.
-func durationSince(t sql.NullTime) *time.Duration {
-	if t.Valid {
-		d := time.Since(t.Time).Round(time.Second)
-		return &d
-	}
-	return nil
 }
