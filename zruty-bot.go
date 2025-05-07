@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,7 +36,8 @@ type zrutyBot struct {
 }
 
 var (
-	zruty zrutyBot
+	zruty      zrutyBot
+	logUpdates bool
 )
 
 // main инициализирует и запускает бота, выполняя следующие действия:
@@ -47,6 +49,7 @@ var (
 // 6. Периодически проверяет пользователей, применяя правила бана.
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	logUpdates = strings.ToLower(os.Getenv("LOG_UPDATES")) == "true"
 	db := openDB("zruty.sqlite3")
 	defer db.Close()
 	if err := applyMigrations(db); err != nil {
@@ -66,6 +69,7 @@ func main() {
 	log.Print("✅ Бот создан…")
 	zruty.client = *bot.Client()
 
+	bot.Use(updatesHandler)
 	bot.HandleMessage(`^/start.*`, startHandler)
 	bot.HandleMessage(`^/report.*`, reportHandler)
 	bot.HandleMessage(`^/underAttackSwitch.*`, underAttackSwitchHandler)

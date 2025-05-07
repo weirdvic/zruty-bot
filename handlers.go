@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -245,5 +246,20 @@ func (b *zrutyBot) callbackHandler(cq *tbot.CallbackQuery) {
 		}
 		b.unrestrictUser(cq.Message.Chat.ID, challengeUserID)
 		log.Printf("✅ Пользователь %d прошёл верификацию в чате %s", challengeUserID, cq.Message.Chat.ID)
+	}
+}
+
+func updatesHandler(h tbot.UpdateHandler) tbot.UpdateHandler {
+	return func(u *tbot.Update) {
+		h(u)
+		if !logUpdates {
+			return
+		}
+		data, err := json.MarshalIndent(u, "", "  ")
+		if err != nil {
+			log.Printf("❌ Не удалось преобразовать данные обновления в JSON: %v", err)
+			return
+		}
+		log.Printf("📡 %s", data)
 	}
 }
