@@ -18,3 +18,5 @@ config.json
 zruty-bot
 
 telegram.http
+
+*.sqlite3
