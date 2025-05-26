@@ -110,7 +110,7 @@ func (b *zrutyBot) init() error {
 			log.Printf("❌ Не удалось включить режим \"Под атакой\": %v", err)
 		}
 	default:
-		log.Printf("Значение UNDER_ATTACK не распознано: %s", underAttackEnv)
+		log.Printf("Значение переменной окружения UNDER_ATTACK не распознано: %s", underAttackEnv)
 	}
 
 	return nil
@@ -188,46 +188,38 @@ func (b *zrutyBot) isInGroup(groupID string, userID int) bool {
 }
 
 // addUsers регистрирует новых пользователей
-func (b *zrutyBot) addUsers(m *tbot.Message) {
-	users := m.NewChatMembers
-	usersAdded := 0
+func (b *zrutyBot) addUser(chatID string, user *tbot.User) {
+	uid := strconv.Itoa(user.ID)
+	groupID, err := strconv.Atoi(chatID)
+	if err != nil {
+		log.Println("❌ Неверный идентификатор группы:", chatID)
+	}
 
-	for _, u := range users {
-		uid := strconv.Itoa(u.ID)
-		groupID, err := strconv.Atoi(m.Chat.ID)
-		if err != nil {
-			log.Println("❌ Неверный идентификатор группы:", m.Chat.ID)
-		}
-
-		// Проверка: есть ли пользователь
-		if !b.isUser(uid) {
-			// Добавляем в таблицу users
-			_, err := b.db.Exec(`
+	// Проверка: есть ли пользователь
+	if !b.isUser(uid) {
+		// Добавляем в таблицу users
+		_, err := b.db.Exec(`
 				INSERT INTO users (id, first_name, last_name, username, is_bot, first_seen_at)
 				VALUES (?, ?, ?, ?, ?, ?)
-			`, u.ID, u.FirstName, u.LastName, u.Username, u.IsBot, time.Now())
-			if err != nil {
-				log.Printf("❌ Ошибка добавления пользователя %d: %v", u.ID, err)
-				continue
-			}
-			log.Printf("✅ Добавлен новый пользователь %s %s (@%s)", u.FirstName, u.LastName, u.Username)
-		} else {
-			log.Printf("🔄 Пользователь %s %s (@%s) уже отслеживается", u.FirstName, u.LastName, u.Username)
+			`, user.ID, user.FirstName, user.LastName, user.Username, user.IsBot, time.Now())
+		if err != nil {
+			log.Printf("❌ Ошибка добавления пользователя %d: %v", user.ID, err)
+			return
 		}
+		log.Printf("✅ Добавлен новый пользователь %s %s (@%s)", user.FirstName, user.LastName, user.Username)
+	} else {
+		log.Printf("🔄 Пользователь %s %s (@%s) уже отслеживается", user.FirstName, user.LastName, user.Username)
+	}
 
-		// Убедимся, что есть связь пользователь-группа
-		_, err = b.db.Exec(`
+	// Убедимся, что есть связь пользователь-группа
+	_, err = b.db.Exec(`
 			INSERT OR IGNORE INTO user_chats (user_id, chat_id)
 			VALUES (?, ?)
 		`, uid, groupID)
-		if err != nil {
-			log.Printf("❌ Ошибка записи связи user->chat: %v", err)
-			continue
-		}
-		usersAdded++
+	if err != nil {
+		log.Printf("❌ Ошибка записи связи user->chat: %v", err)
+		return
 	}
-
-	log.Printf("✅ Добавлено новых пользователей: %d / %d", usersAdded, len(users))
 }
 
 // restrictUser ограничивает возможности пользователя в чате на заданное количество секунд.
@@ -279,12 +271,12 @@ func (b *zrutyBot) unrestrictUser(chatID string, userID int) {
 // - chatID: идентификатор чата, в который отправляется сообщение.
 // - button: кнопка, предоставляющая пользователю возможность подтвердить, что он не робот.
 // Возвращает идентификатор отправленного сообщения.
-func (b *zrutyBot) sendChallengeMsg(chatID string, button tbot.InlineKeyboardButton) (messageID int) {
+func (b *zrutyBot) sendChallengeMsg(chatID string, user *tbot.User, button tbot.InlineKeyboardButton) (messageID int) {
 	challengeMessage, err := getSetting(b.db, "challengeMessage")
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Printf("ℹ️ challengeMessage не найден в БД, используется значение по умолчанию")
-			challengeMessage = "Подтвердите, что вы не робот"
+			challengeMessage = fmt.Sprintf("[%s](tg://user?id=%d), подтвердите, что вы не робот", user.FirstName, user.ID)
 		} else {
 			log.Printf("❌ Ошибка при получении challengeMessage: %v", err)
 			challengeMessage = "Подтвердите, что вы не робот"
@@ -308,7 +300,7 @@ func (b *zrutyBot) sendChallengeMsg(chatID string, button tbot.InlineKeyboardBut
 // отправлять сообщения в чате. Если пользователь не может отправлять сообщения,
 // то он не прошел верификацию. Функция также удаляет сообщение для
 // верификации пользователя.
-func (b *zrutyBot) verifyUser(chatID string, userID int, challengeMsgID int) {
+func (b *zrutyBot) verifyUser(chatID string, userID, welcomeMessageID, challengeMsgID int) {
 	challengeTime, err := getSetting(b.db, "challengeTime")
 	if err != nil {
 		log.Printf("❌ Ошибка при получении challengeTime: %v", err)
@@ -331,22 +323,24 @@ func (b *zrutyBot) verifyUser(chatID string, userID int, challengeMsgID int) {
 		log.Printf("✅ Пользователь %d не прошел верификацию в чате %s", userID, chatID)
 		// TODO: решить что делаем с пользователями, которые не прошли верификацию
 	}
+	err = b.client.DeleteMessage(chatID, welcomeMessageID)
+	if err != nil {
+		log.Printf("❌ Не удалось удалить сообщение для приветствия пользователя: %v", err)
+	}
 	err = b.client.DeleteMessage(chatID, challengeMsgID)
 	if err != nil {
 		log.Printf("❌ Не удалось удалить сообщение для верификации пользователя: %v", err)
 	}
 }
 
-// welcomeUsers отправляет новым пользователям приветственное сообщение
-func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
-	var (
-		users            = m.NewChatMembers
-		muteDuration int = 0
-	)
+// welcomeUser отправляет новому пользователю приветственное сообщение
+func (b *zrutyBot) welcomeUser(chatId string, user *tbot.User) {
+	muteDuration := 0
+
 	welcomeMessage, err := getSetting(b.db, "welcomeMessage")
 	if err != nil {
 		log.Printf("❌ Не удалось прочитать welcomeMessage: %v", err)
-		welcomeMessage = `Добро пожаловать, <a href="tg://user?id=%d">%s</a>!`
+		welcomeMessage = `Добро пожаловать, <a href="tg://user?id=%d">%s</a>\!`
 	}
 	underAttack, err := isSettingEnabled(b.db, "underAttack")
 	if err != nil {
@@ -358,26 +352,24 @@ func (b *zrutyBot) welcomeUsers(m *tbot.Message) {
 		log.Printf("❌ Не удалось прочитать muteDuration: %v", err)
 		muteDuration = 0
 	}
-	for _, u := range users {
-		// Отправляем приветственное сообщение
-		_, err := b.client.SendMessage(
-			m.Chat.ID,
-			fmt.Sprintf(welcomeMessage, u.FirstName, u.ID),
-			tbot.OptParseModeMarkdown,
-		)
-		if err != nil {
-			log.Printf("❌ Не удалось отправить приветственное сообщение: %v", err)
+	// Отправляем приветственное сообщение
+	welcomeMsg, err := b.client.SendMessage(
+		chatId,
+		fmt.Sprintf(welcomeMessage, user.FirstName, user.ID),
+		tbot.OptParseModeMarkdown,
+	)
+	if err != nil {
+		log.Printf("❌ Не удалось отправить приветственное сообщение: %v", err)
+	}
+	// Если включен режим "Под атакой", то запускаем механизм проверки
+	if underAttack {
+		b.restrictUser(chatId, user.ID)
+		challengeButton := tbot.InlineKeyboardButton{
+			Text:         "Я не робот!",
+			CallbackData: "verify_" + strconv.Itoa(user.ID),
 		}
-		// Если включен режим "Под атакой", то запускаем механизм проверки
-		if underAttack {
-			b.restrictUser(m.Chat.ID, u.ID)
-			challengeButton := tbot.InlineKeyboardButton{
-				Text:         "Я не робот!",
-				CallbackData: "verify_" + strconv.Itoa(u.ID),
-			}
-			challengeMsgID := b.sendChallengeMsg(m.Chat.ID, challengeButton)
-			go b.verifyUser(m.Chat.ID, u.ID, challengeMsgID)
-		}
+		challengeMsgID := b.sendChallengeMsg(chatId, user, challengeButton)
+		go b.verifyUser(chatId, user.ID, welcomeMsg.MessageID, challengeMsgID)
 	}
 }
 
