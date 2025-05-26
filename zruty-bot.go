@@ -75,6 +75,7 @@ func main() {
 	bot.HandleMessage(`^/underAttackSwitch.*`, underAttackSwitchHandler)
 	bot.HandleMessage(``, defaultHandler)
 	bot.HandleCallback(zruty.callbackHandler)
+	bot.HandleChatMemberUpdated(zruty.chatMemberHandler)
 
 	go func(bot *tbot.Server) {
 		err := bot.Start()
