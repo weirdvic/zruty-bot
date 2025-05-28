@@ -264,6 +264,12 @@ func (b *zrutyBot) chatMemberHandler(cm *tbot.ChatMemberUpdated) {
 		return
 	}
 	if cm.NewChatMember.IsMember && !cm.OldChatMember.IsMember && cm.From.ID == cm.NewChatMember.User.ID {
+		log.Printf("✅ Пользователь %s %s (@%s) присоединился к группе", cm.NewChatMember.User.FirstName, cm.NewChatMember.User.LastName, cm.NewChatMember.User.Username)
+		log.Printf("cm.From.ID: %d", cm.From.ID)
+		log.Printf("cm.OldChatMember.User.ID: %d", cm.OldChatMember.User.ID)
+		log.Printf("cm.OldChatMember.IsMember: %v", cm.OldChatMember.IsMember)
+		log.Printf("cm.NewChatMember.User.ID: %d", cm.NewChatMember.User.ID)
+		log.Printf("cm.NewChatMember.IsMember: %v", cm.NewChatMember.IsMember)
 		zruty.addUser(cm.Chat.ID, &cm.NewChatMember.User)
 		zruty.welcomeUser(cm.Chat.ID, &cm.NewChatMember.User)
 	}
