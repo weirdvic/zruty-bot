@@ -139,6 +139,55 @@ func defaultHandler(m *tbot.Message) {
 		(m.Chat.Type != "supergroup" && m.Chat.Type != "group") {
 		return
 	}
+	// Проверка — отправил ли сообщение один из отслеживаемых пользователей
+	uid := m.From.ID
+	var (
+		username   sql.NullString
+		firstName  sql.NullString
+		lastName   sql.NullString
+		userExists bool
+	)
+
+	err := zruty.db.QueryRow(`
+		SELECT username, first_name, last_name
+		FROM users
+		WHERE id = ? AND check_passed_at IS NULL
+	`, uid).Scan(&username, &firstName, &lastName)
+
+	switch {
+	case err == sql.ErrNoRows:
+		// Пользователя нет или он уже прошёл проверку
+		return
+	case err != nil:
+		log.Printf("❌ Ошибка при проверке пользователя %d @%v: %v", uid, username, err)
+		return
+	default:
+		userExists = true
+	}
+
+	if userExists {
+		// Обновляем check_passed
+		_, err := zruty.db.Exec(`
+			UPDATE users SET check_passed_at = CURRENT_TIMESTAMP WHERE id = ?
+		`, uid)
+		if err != nil {
+			log.Printf("❌ Не удалось обновить check_passed для пользователя %d @%v: %v", uid, username, err)
+			return
+		}
+
+		// Уведомляем админов
+		zruty.notifyAdmins(fmt.Sprintf(
+			"✅ Пользователь %d @%v прошёл проверку",
+			uid,
+			username,
+		))
+
+		log.Printf("✅ Пользователь %v %v(@%v) написал сообщение в чат!",
+			firstName,
+			lastName,
+			username,
+		)
+	}
 }
 
 // underAttackSwitchHandler - переключает режим underAttack. Если сообщение пришло
@@ -214,58 +263,8 @@ func (b *zrutyBot) chatMemberHandler(cm *tbot.ChatMemberUpdated) {
 		log.Printf("❌ Неизвестная группа: %s", cm.Chat.ID)
 		return
 	}
-	if cm.NewChatMember.IsMember && !cm.OldChatMember.IsMember {
+	if cm.NewChatMember.IsMember && !cm.OldChatMember.IsMember && cm.From.ID == cm.NewChatMember.User.ID {
 		zruty.addUser(cm.Chat.ID, &cm.NewChatMember.User)
 		zruty.welcomeUser(cm.Chat.ID, &cm.NewChatMember.User)
-	}
-
-	// Проверка — отправил ли сообщение один из отслеживаемых пользователей
-	uid := cm.From.ID
-	var (
-		username   sql.NullString
-		firstName  sql.NullString
-		lastName   sql.NullString
-		userExists bool
-	)
-
-	err := zruty.db.QueryRow(`
-		SELECT username, first_name, last_name
-		FROM users
-		WHERE id = ? AND check_passed_at IS NULL
-	`, uid).Scan(&username, &firstName, &lastName)
-
-	switch {
-	case err == sql.ErrNoRows:
-		// Пользователя нет или он уже прошёл проверку
-		return
-	case err != nil:
-		log.Printf("❌ Ошибка при проверке пользователя %d @%v: %v", uid, username, err)
-		return
-	default:
-		userExists = true
-	}
-
-	if userExists {
-		// Обновляем check_passed
-		_, err := zruty.db.Exec(`
-			UPDATE users SET check_passed_at = CURRENT_TIMESTAMP WHERE id = ?
-		`, uid)
-		if err != nil {
-			log.Printf("❌ Не удалось обновить check_passed для пользователя %d @%v: %v", uid, username, err)
-			return
-		}
-
-		// Уведомляем админов
-		zruty.notifyAdmins(fmt.Sprintf(
-			"✅ Пользователь %d @%v прошёл проверку",
-			uid,
-			username,
-		))
-
-		log.Printf("✅ Пользователь %v %v(@%v) написал сообщение в чат!",
-			firstName,
-			lastName,
-			username,
-		)
 	}
 }
